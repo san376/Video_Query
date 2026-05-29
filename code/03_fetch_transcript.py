@@ -1,7 +1,7 @@
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
 
-video_id = "CAgWNxlmYsc"
+video_id = "Gfr50f6ZBvo"
 
 try:
     ytt_api = YouTubeTranscriptApi()
@@ -18,3 +18,5 @@ except NoTranscriptFound:
 
 except TranscriptsDisabled:
     print("No captions available for this video.")
+
+print(transcript_obj)

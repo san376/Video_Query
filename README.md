@@ -73,14 +73,14 @@ pip install python-dotenv youtube-transcript-api langchain langchain-community l
 python run_all.py
 ```
 
-This runs all scripts in `code/` in order (01 → 22).
+This runs all scripts in `code/` in order (01 → 15).
 
 ## Project structure
 
 ```
 Video_Query/
 ├── run_all.py          # Runs the full pipeline
-├── code/               # Pipeline scripts (01–22)
+├── code/               # Pipeline scripts (01–15)
 ├── .env.example        # API key template
 └── README.md
 ```
@@ -92,9 +92,9 @@ Edit these in the `code/` scripts:
 | Setting | File | Default |
 |---------|------|---------|
 | Video ID | `03_fetch_transcript.py` | `CAgWNxlmYsc` |
-| Question | `17_question.py` | nuclear fusion example |
-| Chunk size | `06_split_chunks.py` | 800 / 150 overlap |
-| LLM model | `15_llm.py` | `openai/gpt-3.5-turbo` |
+| Question | `12_question.py` | nuclear fusion example |
+| Chunk size | `05_split_chunks.py` | 800 / 150 overlap |
+| LLM model | `10_llm.py` | `openai/gpt-3.5-turbo` |
 
 ## Notes
 
