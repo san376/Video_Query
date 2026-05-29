@@ -28,6 +28,24 @@ So the answer comes from the video’s captions, not from the model guessing.
 4. Store vectors in FAISS → similarity search  
 5. Your question → find top 4 matching chunks → LLM writes the answer from that context only
 
+## Architecture
+
+```mermaid
+flowchart LR
+    A[YouTube video ID] --> B[Transcript API]
+    B --> C{English?}
+    C -->|No| D[Marian MT translate]
+    C -->|Yes| E[Full text]
+    D --> E
+    E --> F[Text splitter]
+    F --> G[HF embeddings]
+    G --> H[FAISS index]
+    I[User question] --> H
+    H --> J[Retrieved context]
+    J --> K[OpenRouter LLM]
+    K --> L[Answer]
+```
+
 ## Setup
 
 ```bash
