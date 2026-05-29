@@ -1,98 +1,85 @@
 # Video_Query
 
-YouTube Video Query (Language-Aware RAG)
+Query any YouTube video in plain English — without watching the whole thing.
 
-Query YouTube video content in natural language. This project fetches a video’s captions, optionally translates non-English transcripts to English, builds a local vector index, and answers questions using retrieval-augmented generation (RAG) with an LLM.
-
-The workflow is implemented in [`Youtube_language_query.ipynb`](Youtube_language_query.ipynb).
+Give it a **video ID** and a **question** (e.g. *"Is nuclear fusion discussed? What was said?"*). The project reads the video’s captions, finds the parts that match your question, and returns an answer based only on what was actually said in the video.
 
 ## What it does
 
-1. **Fetch transcript** — Uses [`youtube-transcript-api`](https://github.com/jdepoix/youtube-transcript-api) to pull captions for a given `video_id`, with fallbacks when the default track is missing.
-2. **Detect & translate** — Uses `langdetect` and Helsinki-NLP Marian models (`opus-mt-{lang}-en`) to detect language and translate non-English text to English in chunks.
-3. **Chunk & embed** — Splits transcript text with LangChain’s `RecursiveCharacterTextSplitter`, then embeds chunks with **Hugging Face** `sentence-transformers/all-MiniLM-L6-v2` (runs locally, no API key).
-4. **Vector store** — Stores embeddings in a **FAISS** index for similarity search.
-5. **Q&A** — Retrieves top-k relevant chunks and sends them to **OpenRouter** via LangChain’s `ChatOpenAI` (`openai/gpt-3.5-turbo`), answering only from provided context.
+**Problem:** YouTube videos are long. Finding whether a specific topic is covered means scrubbing through or reading the entire transcript yourself.
 
-## Architecture
+**Solution:** This tool automates that. It:
 
-```mermaid
-flowchart LR
-    A[YouTube video ID] --> B[Transcript API]
-    B --> C{English?}
-    C -->|No| D[Marian MT translate]
-    C -->|Yes| E[Full text]
-    D --> E
-    E --> F[Text splitter]
-    F --> G[HF embeddings]
-    G --> H[FAISS index]
-    I[User question] --> H
-    H --> J[Retrieved context]
-    J --> K[OpenRouter LLM]
-    K --> L[Answer]
-```
+1. **Downloads the caption transcript** for a YouTube video (the same text you see when you turn on subtitles).
+2. **Translates to English** if the captions are in another language (e.g. Hindi, Spanish).
+3. **Breaks the transcript into small chunks** and converts each chunk into a searchable vector (embedding).
+4. **Builds a search index (FAISS)** so it can quickly find chunks related to your question.
+5. **Answers your question** using an LLM (GPT-3.5 via OpenRouter), but **only using the retrieved transcript text** — not general internet knowledge.
 
-## Requirements
+So the answer comes from the video’s captions, not from the model guessing.
 
-- Python 3.9+
-- An [OpenRouter](https://openrouter.ai/) API key (OpenAI-compatible; keys start with `sk-or-`)
-- Internet for: YouTube transcripts, Hugging Face model downloads, OpenRouter API
+**Example:** For a science video, you can ask *"Was CRISPR mentioned? What did they say about it?"* and get a summary pulled from the relevant parts of the transcript.
 
-No API key is required for embeddings or translation models (they download from Hugging Face on first use).
+## How it works
+
+1. Fetch YouTube captions → full transcript text  
+2. Detect language → translate to English if needed  
+3. Split text into chunks → embed with Hugging Face (local, free)  
+4. Store vectors in FAISS → similarity search  
+5. Your question → find top 4 matching chunks → LLM writes the answer from that context only
 
 ## Setup
 
-1. Clone or download this repository.
+```bash
+git clone https://github.com/san376/Video_Query.git
+cd Video_Query
+cp .env.example .env
+```
 
-2. Create your environment file:
+Add your OpenRouter key to `.env`:
 
-   ```bash
-   cp .env.example .env
-   ```
+```env
+OPENAI_API_KEY=your-key-here
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+```
 
-   Edit `.env` and set:
+Install dependencies:
 
-   | Variable | Description |
-   |----------|-------------|
-   | `OPENAI_API_KEY` | Your OpenRouter API key |
-   | `OPENAI_BASE_URL` | `https://openrouter.ai/api/v1` |
+```bash
+pip install python-dotenv youtube-transcript-api langchain langchain-community langchain-text-splitters langchain-openai faiss-cpu sentence-transformers transformers sentencepiece langdetect langcodes language_data tqdm
+```
 
-3. Install dependencies (also run in the notebook):
+## Run
 
-   ```bash
-   pip install python-dotenv youtube-transcript-api langchain langchain-community \
-     langchain-text-splitters langchain-openai faiss-cpu sentence-transformers \
-     transformers sentencepiece langdetect langcodes language_data tqdm
-   ```
+```bash
+python run_all.py
+```
 
-4. Open `Youtube_language_query.ipynb` and run cells in order.
-
-## Configuration
-
-- **Video**: Change `video_id` in the transcript cell (example in notebook: `CAgWNxlmYsc`).
-- **Chunking**: `chunk_size=800`, `chunk_overlap=150` in the splitter cell.
-- **Retrieval**: `k=4` similar chunks in the retriever.
-- **LLM**: `openai/gpt-3.5-turbo` via OpenRouter, `temperature=0.2`.
-
-## Example question
-
-The notebook demonstrates asking whether nuclear fusion is discussed in the video and what was said—answers are grounded in retrieved transcript snippets only.
+This runs all scripts in `code/` in order (01 → 22).
 
 ## Project structure
 
 ```
-Youtube_video_query/
-├── Youtube_language_query.ipynb   # Main pipeline
-├── .env.example                   # Template for secrets
-├── .env                           # Your keys (not committed; see .gitignore)
-├── .gitignore
+Video_Query/
+├── run_all.py          # Runs the full pipeline
+├── code/               # Pipeline scripts (01–22)
+├── .env.example        # API key template
 └── README.md
 ```
 
-## Limitations
+## Config
 
-- Requires captions on the YouTube video (`TranscriptsDisabled` if none).
-- Translation quality depends on language support in Marian `opus-mt-*-en` models.
-- Large transcripts increase memory use for FAISS and embedding.
-- Answers are only as good as the retrieved chunks and caption accuracy.
+Edit these in the `code/` scripts:
 
+| Setting | File | Default |
+|---------|------|---------|
+| Video ID | `03_fetch_transcript.py` | `CAgWNxlmYsc` |
+| Question | `17_question.py` | nuclear fusion example |
+| Chunk size | `06_split_chunks.py` | 800 / 150 overlap |
+| LLM model | `15_llm.py` | `openai/gpt-3.5-turbo` |
+
+## Notes
+
+- Video must have captions available
+- Embeddings and translation run locally (Hugging Face)
+- Only the LLM step needs an OpenRouter API key
