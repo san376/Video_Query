@@ -1,4 +1,5 @@
 .env
+Youtube_language_query.ipynb
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
